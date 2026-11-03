@@ -813,23 +813,92 @@ function parseProtobuf(data, pos = 0, end = null) {
   return [fields, pos];
 }
 
+// 重要保護：圖片下方所有客製資訊核心欄位，絕對不可被視為金額行刪除！
+function isProtectedCustomHeader(line) {
+  const s = line.trim();
+  if (!s || s === '*') return false;
+
+  // 1. 核心聯絡與取貨資訊
+  const safeKeys = ['日期', '時間', '地點', '自取', '取貨', '姓名', '電話', 'LINE', 'Line', 'line', '門市', '地址'];
+  if (safeKeys.some(k => s.includes(k))) return true;
+
+  // 2. 客製資訊核心欄位（蛋糕體顏色、絲帶、題字、尺寸、口味、加購、款式）
+  const patterns = [
+    /^(蛋糕體顏色|蛋糕顏色|色系|顏色)[：:]/,
+    /^(絲帶|緞帶|絲帶顏色|緞帶顏色)[：:]/,
+    /(英文題字|中文題字|題字|無題字|側面題字|表面題字|底座題字|盤子題字|上層題字)/,
+    /^(蛋糕尺寸|尺寸)[：:]/,
+    /^(蛋糕口味|口味)[：:]/,
+    /^(加購|需加購)[：:]/,
+    /^(加提袋|含提袋|提袋)[：:]\s*(要|有|O|Ｏ|需|\d+|不用|否|無)/i,
+    /^(圖款|款式|加單|備註|許願)/
+  ];
+  return patterns.some(p => p.test(s));
+}
+
 // 價格與加總過濾函數
 function isPriceOrTotalLine(line) {
   const s = line.trim();
   if (!s || s === '*') return false;
 
-  // 重要保護：取貨日期、時間、地點、聯絡人、規格等核心資訊，絕非價格加總行！
-  const safeKeys = ['日期', '時間', '地點', '自取', '取貨', '姓名', '電話', 'LINE', 'Line', 'line'];
-  if (safeKeys.some(k => s.includes(k))) return false;
-  if (/^(蛋糕尺寸|蛋糕口味|尺寸[：:]|口味[：:]|題字[：:]|無題字|側面題字)/.test(s)) return false;
+  // 重要保護：客製資訊核心欄位，絕非價格加總行！
+  if (isProtectedCustomHeader(s)) return false;
 
-  if (/(=|＝|總共|合計|價格是\s*\$)/.test(s)) return true;
+  // 排除含有尺寸單位的情況（如 4吋、6寸）
+  if (/\d+\s*(吋|寸)/.test(s)) return false;
+
+  if (/(=|＝|總共|合計|價格是\s*\$|預算[：:])/.test(s)) return true;
   if (/\d+\s*[\+\-\*\/]\s*\d+/.test(s)) return true;
   const itemPricePattern = /^(花束|蛋糕|漢堡盒|餐具|蠟燭|保冷[^\d]*|保冰[^\d]*|插牌|提袋|襯紙|加購\$|\d+人餐具|兩人餐具|五人餐具|十人餐具)\s*[:：]?\s*(\$|\d+)/;
   if (itemPricePattern.test(s)) return true;
   if (/加購\$\d+/.test(s)) return true;
   if (/^\$?\d+$/.test(s)) return true;
   return false;
+}
+
+function filterOrderItems(items) {
+  const cleanItems = [];
+  let inInscription = false;
+
+  for (let it of items) {
+    if (it.type !== 'line') {
+      inInscription = false;
+      cleanItems.push(it);
+      continue;
+    }
+
+    const s = it.content.trim();
+    if (!s || s === '*') continue;
+
+    // 檢查是否為客製欄位起始
+    if (isProtectedCustomHeader(s)) {
+      if (/(英文題字|中文題字|題字|底座題字|表面題字|側面題字|上層題字|盤子題字)/.test(s)) {
+        inInscription = true;
+      } else {
+        inInscription = false;
+      }
+      cleanItems.push(it);
+      continue;
+    }
+
+    // 若處於題字區塊內，只要沒有遇到下一個欄位，所有內容都是題字內容（例如 18, 10/31, Happy Birthday, 1+1=2）
+    if (inInscription) {
+      if (/^(蛋糕尺寸|尺寸|蛋糕口味|口味|加購|需加購|取貨|自取|訂購人|姓名|電話)[：:]/.test(s)) {
+        inInscription = false;
+        cleanItems.push(it);
+      } else {
+        cleanItems.push(it);
+      }
+      continue;
+    }
+
+    // 其他非保護欄位，檢查是否為價格行
+    if (isPriceOrTotalLine(s)) continue;
+
+    cleanItems.push(it);
+  }
+
+  return cleanItems;
 }
 
 function cleanPickupTime(timeStr) {
@@ -866,7 +935,22 @@ function isOrderStarterText(text) {
   const s = text.trim();
   if (!s || s === '*') return false;
   if (isPriceOrTotalLine(s)) return false;
-  const patterns = [/^[1-9]️⃣/, /^[①-⑨]/, /^[1-9]\./, /^加單/, /^圖款/, /^款式/, /包裝花束/, /^💐/, /^蛋糕尺寸/, /^尺寸[：:]/, /^口味[：:]/];
+  const patterns = [
+    /^[1-9]️⃣/,
+    /^[①-⑨]/,
+    /^[1-9]\./,
+    /^加單/,
+    /^圖款/,
+    /^款式/,
+    /包裝花束/,
+    /^💐/,
+    /^(蛋糕體顏色|蛋糕顏色|色系|顏色)[：:]/,
+    /^(絲帶|緞帶|絲帶顏色|緞帶顏色)[：:]/,
+    /(英文題字|中文題字|題字|無題字|側面題字|表面題字|底座題字|盤子題字)/,
+    /^蛋糕尺寸/,
+    /^尺寸[：:]/,
+    /^口味[：:]/
+  ];
   return patterns.some(p => p.test(s));
 }
 
@@ -880,12 +964,13 @@ function categorizeLine(line) {
 }
 
 function formatOrderSections(items, defaultYear = '2026', defaultMonth = '10', defaultDay = '28') {
+  const cleanedItems = filterOrderItems(items);
   const rawLines = [];
   let hasDateLine = false;
-  items.forEach(it => {
+  cleanedItems.forEach(it => {
     if (it.type === 'line') {
       let s = it.content.trim();
-      if (s && !isPriceOrTotalLine(s)) {
+      if (s) {
         if (/^(取貨日期|自取日期|日期)[：:]/.test(s)) {
           s = standardizeDate(s, defaultYear, defaultMonth, defaultDay);
           hasDateLine = true;
@@ -940,12 +1025,11 @@ function formatOrderSections(items, defaultYear = '2026', defaultMonth = '10', d
     } else if (currCat === 'contact') {
       contactLines.push(renderedLine);
     } else {
-      // 上半部：圖款 加 2 行空白 before 蛋糕尺寸
+      // 上半部：客製資訊（顏色/絲帶/題字）與蛋糕尺寸之間空 1 行，口味與加購之間空 1 行
       if (/^(蛋糕尺寸|尺寸[：:])/.test(s)) {
         while (topLines.length > 0 && topLines[topLines.length - 1] === '') {
           topLines.pop();
         }
-        topLines.push('');
         topLines.push('');
       } else if (prevCat !== null && currCat !== prevCat) {
         if (['addon', 'suborder'].includes(currCat)) {
@@ -1192,7 +1276,7 @@ async function processPagesFile(file) {
       if (orderStartIdx === null) orderStartIdx = startSearch;
 
       const rawItems = stream.slice(orderStartIdx, phoneIdx + 1);
-      const cleanItems = rawItems.filter(it => it.type === 'image' || (it.content.trim() !== '*' && !isPriceOrTotalLine(it.content)));
+      const cleanItems = filterOrderItems(rawItems);
       orders.push(cleanItems);
       prevPhoneIdx = phoneIdx;
     }
@@ -1415,4 +1499,3 @@ window.addEventListener('load', () => {
 </script>
 </body>
 </html>
-
