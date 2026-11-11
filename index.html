@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>梧藝營運系統 - 訂單 A4 四模列印產生器</title>
+<title>梧藝營運系統 - 訂單 A4 兩模列印產生器</title>
 <!-- 載入 JSZip 解析 Pages 檔案與 html2pdf 匯出 PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -211,13 +211,13 @@
     color: #cbd5e1;
   }
 
-  /* A4 紙張本體：精確 A4 (210mm x 297mm) 四等份網格 */
+  /* A4 紙張本體：精確 A4 橫向 (297mm x 210mm) 兩等份直欄網格 (每模 148.5mm x 210mm 標準 A5) */
   .a4-sheet {
-    width: 210mm;
-    height: 297mm;
-    max-width: 210mm;
-    max-height: 297mm;
-    min-height: 297mm;
+    width: 297mm;
+    height: 210mm;
+    max-width: 297mm;
+    max-height: 210mm;
+    min-height: 210mm;
     margin: 20px auto;
     background: #ffffff;
     padding: 0;
@@ -226,53 +226,42 @@
     page-break-after: always;
     break-after: page;
     display: grid;
-    grid-template-columns: 105mm 105mm;
-    grid-template-rows: 148.5mm 148.5mm;
+    grid-template-columns: 148.5mm 148.5mm;
+    grid-template-rows: 210mm;
     box-sizing: border-box;
     overflow: hidden;
     color: #1f2937;
     font-weight: 400;
   }
 
-  /* 單個訂單格子 (佔 1/4 A4，剛好 105mm x 148.5mm，內部四等份裁切虛線連成直線) */
-  .order-cell {
-    width: 105mm;
-    height: 148.5mm;
-    max-width: 105mm;
-    max-height: 148.5mm;
-    min-width: 105mm;
-    min-height: 148.5mm;
+  /* 單個訂單卡片 (佔 1/2 A4 橫向，148.5mm x 210mm 直向 A5，真實備忘錄格式) */
+  .order-card {
+    width: 148.5mm;
+    height: 210mm;
+    max-width: 148.5mm;
+    max-height: 210mm;
     box-sizing: border-box;
-    padding: 6mm 7mm 4mm 7mm;
+    padding: 7mm 10mm 6mm 10mm;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     position: relative;
     overflow: hidden;
     background: #ffffff;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  .order-card.card-left {
+    border-right: 1.2px dashed #9ca3af;
+  }
+  .order-card.card-right {
     border: none;
   }
-
-  /* A4 象限邊框：左邊與右邊、上面與下面各呈完美貫通的水平與垂直直線 */
-  .order-cell.cell-top-left {
-    border-right: 1.2px dashed #6b7280;
-    border-bottom: 1.2px dashed #6b7280;
-  }
-  .order-cell.cell-top-right {
-    border-bottom: 1.2px dashed #6b7280;
-  }
-  .order-cell.cell-bottom-left {
-    border-right: 1.2px dashed #6b7280;
-  }
-  .order-cell.cell-bottom-right {
-    border: none;
-  }
-
-  .order-cell.empty {
+  .order-card.empty {
     background: #fafafa;
   }
 
-  /* 右上角極簡訂單編號標籤 (非粗體) */
+  /* 訂單編號標籤 */
   .order-num-pill {
     position: absolute;
     top: 5mm;
@@ -287,260 +276,92 @@
     z-index: 5;
   }
 
-  /* 訂單主內容區域（包含上半部圖款/口味與右側照片） */
-  .order-top-area {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* 左側上半部：圖款、蛋糕尺寸、蛋糕口味、加購 */
-  .order-specs-col {
-    flex: 1 1 54%;
+  .order-flow {
+    width: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-    color: #1f2937;
-    font-weight: 400;
-    font-size: 11pt;
-    line-height: 1.38;
-    white-space: pre-wrap;
-    word-break: break-word;
   }
 
-  /* 重點蛋糕口味：顯著放大好辨識 */
-  .spec-flavor {
-    font-size: 12.8pt;
+  /* 照片排版：大比例照片呈現 */
+  .img-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin: 6px 0 8px 0;
+    align-items: flex-start;
+  }
+  .note-img {
+    max-width: 340px;
+    max-height: 240px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    cursor: zoom-in;
+  }
+  .img-row.multi .note-img {
+    max-width: 48%;
+    max-height: 180px;
+  }
+
+  /* 備忘錄文字行 */
+  .note-line {
+    margin: 1.5px 0;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .note-heading {
+    font-size: 11.5pt;
     font-weight: 600;
     color: #111827;
-    background-color: #fef3c7;
-    border-left: 3px solid #f59e0b;
-    padding: 2px 5px;
     margin: 2px 0;
-    border-radius: 2px;
-    line-height: 1.32;
-    display: block;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
+  }
+  .section-divider {
+    height: 8px;
   }
 
-  /* 蛋糕尺寸行 */
+  /* 尺寸與口味文字 */
+  .spec-flavor {
+    font-size: 11.5pt;
+    font-weight: 600;
+    color: #111827;
+  }
   .spec-size {
     font-size: 11.5pt;
     font-weight: 500;
     color: #111827;
-    display: block;
   }
 
-  /* 右側：照片欄 */
-  .img-col {
-    flex: 0 0 46%;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 18px; /* 避開右上角標籤 */
-  }
-
-  .order-photo {
-    width: 100%;
-    max-height: 155px;
-    object-fit: contain;
-    border: 1px solid #d1d5db;
-    border-radius: 5px;
-    background: #fafafa;
-    cursor: zoom-in;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  }
-  .img-col.multi .order-photo {
-    max-height: 85px;
-  }
-  .img-col.triple .order-photo {
-    max-height: 55px;
-  }
-
-  /* 下半部：取貨資訊（左下）與 訂購人資訊（右下）橫向雙欄佈局（維持適中小字體，不放大） */
-  .order-bottom-area {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 8px;
-    padding-top: 4px;
-    padding-bottom: 2px;
-    margin-top: auto;
-    font-size: 9pt;
-    line-height: 1.32;
-    color: #374151;
-    font-weight: 400;
-  }
-
-  /* 左下角：取貨日期、取貨時間、自取地點 */
-  .bottom-pickup-col {
-    flex: 1 1 52%;
-    white-space: pre-wrap;
-    word-break: break-word;
-    text-align: left;
-  }
-
-  /* 右下角：訂購人LINE名稱、姓名、電話 */
-  .bottom-contact-col {
-    flex: 1 1 48%;
-    white-space: pre-wrap;
-    word-break: break-word;
-    text-align: left;
-    padding-left: 4px;
-    border-left: 1px dotted #e5e7eb;
-  }
-
-  /* ✂️ 方便撕下聯：名字緊湊靠左自適應寬度，右側釋放最大空間顯示完整資訊 */
-  .memo-slip {
-    margin-top: 2px;
-    padding-top: 2px;
-    height: 14mm;
-    max-height: 14mm;
-    min-height: 14mm;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    overflow: hidden;
-  }
-
-  .memo-slip-cut-line {
-    height: 2.8mm;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 7.2pt;
-    font-weight: 400;
-    color: #6b7280;
-    line-height: 1;
-    margin-bottom: 0.5mm;
-    flex-shrink: 0;
-  }
-  .cut-line-dashed {
-    flex: 1;
-    border-bottom: 1px dashed #9ca3af;
-  }
-
-  .memo-slip-box {
-    height: 10.7mm;
-    max-height: 10.7mm;
-    min-height: 10.7mm;
-    box-sizing: border-box;
-    border: 1.2px solid #374151;
-    border-radius: 3px;
-    padding: 1px 4px;
-    background: #ffffff;
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    gap: 5px;
-    overflow: hidden;
-  }
-
-  /* 左側大名字區塊：寬度依字數自適應緊湊靠左（不留過多空白），確保右側資訊擁有最大空間 */
-  .memo-name-col {
-    flex: 0 0 auto;
-    width: auto;
-    max-width: 32mm;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding-right: 5px;
-    border-right: 1px dashed #9ca3af;
-    overflow: hidden;
-  }
-  .memo-name-text {
-    font-size: 13pt;
-    font-weight: 700;
-    color: #000000;
-    white-space: nowrap;
-    line-height: 1;
-  }
-
-  /* 右側資訊區塊：向左延伸佔滿剩餘寬度，字體自動微縮確保完整呈現不截斷 */
-  .memo-info-col {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
-    overflow: hidden;
-    min-width: 0;
-  }
-
-  .memo-slip-row {
-    display: flex;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 3px 8px;
-    font-size: 7.2pt;
-    line-height: 1.15;
-    color: #111827;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-
-  .memo-slip-row .memo-item {
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .memo-slip-row .memo-item.flex-1 {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .memo-slip-label {
-    font-weight: 400;
-    color: #6b7280;
-    font-size: 7.2pt;
-  }
-  .memo-slip-val {
-    font-weight: 400;
-    color: #111827;
-    font-size: 7.2pt;
-  }
-
-  .memo-slip-val.addon {
-    color: #581c87;
-    background-color: #f3e8ff;
-    padding: 0 2px;
-    border-radius: 2px;
-  }
-
-  /* 淡紫色螢光筆標記（針對加購項目，非粗體） */
+  /* 加購項目：淡粉紫高亮標記（與備忘錄完全一致） */
   .hl-addon {
-    background-color: #e9d5ff !important;
-    color: #3b0764 !important;
-    padding: 1px 4px;
-    border-radius: 3px;
-    font-weight: 500;
+    background-color: #fdf2f8 !important;
+    color: #c026d3 !important;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
     display: inline-block;
+    border: 1px solid #fbcfe8;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
-    border: 1px solid #d8b4fe;
+  }
+
+  /* 紅色驚嘆號標示 */
+  .red-mark {
+    color: #ef4444;
+    font-weight: 700;
   }
 
   @page {
-    size: A4 portrait;
+    size: A4 landscape;
     margin: 0 !important;
   }
-  /* 列印模式：精確四等份 (105mm x 148.5mm) 十字正交虛線一刀切 */
+
+  /* 列印模式：精確兩等份 (148.5mm x 210mm) 中央虛線一刀切 */
   @media print {
     @page {
-      size: A4 portrait;
+      size: A4 landscape;
       margin: 0 !important;
     }
     html, body {
@@ -548,7 +369,7 @@
       padding: 0 !important;
       background: none !important;
       color: #1f2937 !important;
-      width: 210mm !important;
+      width: 297mm !important;
       height: auto !important;
       font-weight: 400 !important;
     }
@@ -561,11 +382,11 @@
       max-width: 100% !important;
     }
     .a4-sheet {
-      width: 210mm !important;
-      height: 297mm !important;
-      max-width: 210mm !important;
-      max-height: 297mm !important;
-      min-height: 297mm !important;
+      width: 297mm !important;
+      height: 210mm !important;
+      max-width: 297mm !important;
+      max-height: 210mm !important;
+      min-height: 210mm !important;
       margin: 0 !important;
       padding: 0 !important;
       box-shadow: none !important;
@@ -574,8 +395,8 @@
       page-break-inside: avoid !important;
       break-inside: avoid !important;
       display: grid !important;
-      grid-template-columns: 105mm 105mm !important;
-      grid-template-rows: 148.5mm 148.5mm !important;
+      grid-template-columns: 148.5mm 148.5mm !important;
+      grid-template-rows: 210mm !important;
       box-sizing: border-box !important;
       overflow: hidden !important;
     }
@@ -583,36 +404,34 @@
       page-break-after: avoid !important;
       break-after: avoid !important;
     }
-    .order-cell {
-      width: 105mm !important;
-      height: 148.5mm !important;
-      max-width: 105mm !important;
-      max-height: 148.5mm !important;
-      min-width: 105mm !important;
-      min-height: 148.5mm !important;
+    .order-card {
+      width: 148.5mm !important;
+      height: 210mm !important;
+      max-width: 148.5mm !important;
+      max-height: 210mm !important;
       box-sizing: border-box !important;
-      padding: 6mm 7mm 4mm 7mm !important;
+      padding: 7mm 10mm 6mm 10mm !important;
       display: flex !important;
       flex-direction: column !important;
-      justify-content: space-between !important;
+      justify-content: flex-start !important;
       position: relative !important;
       overflow: hidden !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
-    .order-cell.empty {
-      width: 105mm !important;
-      height: 148.5mm !important;
-      max-width: 105mm !important;
-      max-height: 148.5mm !important;
-      min-width: 105mm !important;
-      min-height: 148.5mm !important;
-      box-sizing: border-box !important;
-      padding: 6mm 7mm 4mm 7mm !important;
+    .order-card.card-left {
+      border-right: 1.2px dashed #9ca3af !important;
+    }
+    .order-card.card-right {
+      border: none !important;
+    }
+    .order-card.empty {
       background: #fafafa !important;
     }
     .hl-addon {
-      background-color: #e9d5ff !important;
+      background-color: #fdf2f8 !important;
+      color: #c026d3 !important;
+      border: 1px solid #fbcfe8 !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
@@ -642,17 +461,17 @@
   <div class="brand">
     <span class="brand-icon">🍰</span>
     <div>
-      <div class="brand-title">梧藝營運系統 - 訂單 A4 四模列印產生器</div>
-      <div class="brand-sub">拖入 Pages 檔 ➔ 抓照片與文字 ➔ 價格加總全部去除 ➔ 下載 PDF</div>
+      <div class="brand-title">梧藝營運系統 - 訂單 A4 橫向兩模列印產生器</div>
+      <div class="brand-sub">拖入 Pages 檔 ➔ 抓照片與文字 ➔ 價格加總全部去除 ➔ A4 橫向兩模 (每模標準 A5) 備忘錄排版</div>
     </div>
   </div>
   <div class="top-actions" style="display:flex; align-items:center; gap:12px;">
     <span style="font-size:12px; color:#fbbf24; background:rgba(251,191,36,0.15); padding:6px 12px; border-radius:6px; border:1px solid rgba(251,191,36,0.3); display:inline-flex; align-items:center;">
-      💡 列印提示：列印視窗請「取消勾選 頁首與頁尾」，即可隱藏標題與網址，確保 4 格完全滿版且四等份絕對等大！
+      💡 列印提示：列印視窗請確認方向為「橫向」，並「取消勾選 頁首與頁尾」！
     </span>
-    <button class="btn btn-secondary" onclick="loadSampleData()">📋 載入今日範例 (11筆)</button>
-    <button class="btn btn-primary" onclick="printClean()">🖨️ 瀏覽器列印 (A4 4模)</button>
-    <button class="btn btn-success" id="btn-download" onclick="downloadPDF()">📥 下載 A4 4模 PDF</button>
+    <button class="btn btn-secondary" onclick="loadSampleData()">📋 載入今日範例 (13筆)</button>
+    <button class="btn btn-primary" onclick="printClean()">🖨️ 瀏覽器列印 (A4 橫向兩模)</button>
+    <button class="btn btn-success" id="btn-download" onclick="downloadPDF()">📥 下載 A4 橫向兩模 PDF</button>
   </div>
 </header>
 
@@ -661,7 +480,7 @@
   <div class="notice-box no-print">
     💡 <strong>價格加總已全自動徹底過濾！</strong><br>
     凡是類似 <code>花束880</code>、<code>插牌55</code>、<code>蠟燭15</code>、<code>保冷袋劑 100</code>、<code>=1830</code> 等價格明細與加總算式，皆已<strong>雙重保險過濾，絕對不會印在工單上</strong>！<br>
-    👉 直接將您的 <strong>.pages 檔案拖入下方藍色大框</strong>，即可 0.1 秒自動抓出全部高畫質照片並完成排版！
+    👉 直接將您的 <strong>.pages 檔案拖入下方藍色大框</strong>，即可 0.1 秒自動抓出全部高畫質照片並完成 A4 橫向兩模（大照片＋標準 A5 備忘錄）排版！
   </div>
 
   <div class="input-card no-print">
@@ -673,7 +492,7 @@
     <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
       <div class="drop-icon">📑</div>
       <div class="drop-text">拖曳 .pages 檔案到這裡，或點擊此處選取檔案</div>
-      <div class="drop-sub">（自動提取全部蛋糕照片、文字保留至電話行、價格加總徹底清除、加購自動螢光筆）</div>
+      <div class="drop-sub">（自動提取全部高畫質照片、大圖呈現、文字保留至電話行、價格加總徹底清除、加購自動粉紫色標記）</div>
     </div>
 
     <div>
@@ -689,7 +508,7 @@
 
   <div class="preview-wrapper">
     <div class="preview-title no-print">
-      <span>📄 步驟 2：A4 4模排版即時預覽（價格加總已清除，加購項目標記淡紫色）</span>
+      <span>📄 步驟 2：A4 橫向兩模排版預覽（一頁2筆訂單，中央虛線一刀對切成兩張標準 A5）</span>
     </div>
     <div id="print-content"></div>
   </div>
@@ -822,7 +641,7 @@ function isProtectedCustomHeader(line) {
   const safeKeys = ['日期', '時間', '地點', '自取', '取貨', '姓名', '電話', 'LINE', 'Line', 'line', '門市', '地址'];
   if (safeKeys.some(k => s.includes(k))) return true;
 
-  // 2. 客製資訊核心欄位（蛋糕體顏色、絲帶、題字、尺寸、口味、加購、款式）
+  // 2. 客製資訊核心欄位
   const patterns = [
     /^(蛋糕體顏色|蛋糕顏色|色系|顏色)[：:]/,
     /^(絲帶|緞帶|絲帶顏色|緞帶顏色)[：:]/,
@@ -831,7 +650,8 @@ function isProtectedCustomHeader(line) {
     /^(蛋糕口味|口味)[：:]/,
     /^(加購|需加購)[：:]/,
     /^(加提袋|含提袋|提袋)[：:]\s*(要|有|O|Ｏ|需|\d+|不用|否|無)/i,
-    /^(圖款|款式|加單|備註|許願)/
+    /^(圖款|款式|加單|備註|許願|包裝紙|襯紙)/,
+    /^(預算|鮮花預算)[：:]/
   ];
   return patterns.some(p => p.test(s));
 }
@@ -847,7 +667,7 @@ function isPriceOrTotalLine(line) {
   // 排除含有尺寸單位的情況（如 4吋、6寸）
   if (/\d+\s*(吋|寸)/.test(s)) return false;
 
-  if (/(=|＝|總共|合計|價格是\s*\$|預算[：:])/.test(s)) return true;
+  if (/(=|＝|總共|合計|價格是\s*\$)/.test(s)) return true;
   if (/\d+\s*[\+\-\*\/]\s*\d+/.test(s)) return true;
   const itemPricePattern = /^(花束|蛋糕|漢堡盒|餐具|蠟燭|保冷[^\d]*|保冰[^\d]*|插牌|提袋|襯紙|加購\$|\d+人餐具|兩人餐具|五人餐具|十人餐具)\s*[:：]?\s*(\$|\d+)/;
   if (itemPricePattern.test(s)) return true;
@@ -881,7 +701,6 @@ function filterOrderItems(items) {
       continue;
     }
 
-    // 若處於題字區塊內，只要沒有遇到下一個欄位，所有內容都是題字內容（例如 18, 10/31, Happy Birthday, 1+1=2）
     if (inInscription) {
       if (/^(蛋糕尺寸|尺寸|蛋糕口味|口味|加購|需加購|取貨|自取|訂購人|姓名|電話)[：:]/.test(s)) {
         inInscription = false;
@@ -892,7 +711,6 @@ function filterOrderItems(items) {
       continue;
     }
 
-    // 其他非保護欄位，檢查是否為價格行
     if (isPriceOrTotalLine(s)) continue;
 
     cleanItems.push(it);
@@ -903,7 +721,9 @@ function filterOrderItems(items) {
 
 function cleanPickupTime(timeStr) {
   if (!timeStr) return '';
-  return timeStr.replace(/[（\(]\s*3(?::00)?\s*(?:pm|點)?\s*[~～\-—]\s*7(?::00)?\s*(?:pm|點)?\s*[）\)]/gi, '').trim();
+  let s = timeStr.replace(/[（\(]\s*3(?::00)?\s*(?:pm|點)?\s*[~～\-—]\s*7(?::00)?\s*(?:pm|點)?\s*[）\)]/gi, '');
+  s = s.replace(/1j6m\/4vu03g4/gi, '').replace(/1j6m\/4/gi, '');
+  return s.trim();
 }
 
 function standardizeDate(line, defaultYear = '2026', defaultMonth = '10', defaultDay = '28') {
@@ -954,175 +774,8 @@ function isOrderStarterText(text) {
   return patterns.some(p => p.test(s));
 }
 
-function categorizeLine(line) {
-  const s = line.trim();
-  if (/^(加購|需加購|加提袋|含提袋|提袋[：:])/i.test(s)) return 'addon';
-  if (/^(取貨日期|自取日期|日期[：:]|取貨時間|自取時間|時間[：:]|取貨地點|自取地點|地點|送達地點|外送地址)[：:]?/i.test(s)) return 'pickup';
-  if (/^(訂購人|取貨人)?.*(LINE|姓名|電話)[：:]?/i.test(s)) return 'contact';
-  if (/^[1-9]️⃣/.test(s)) return 'suborder';
-  return 'specs';
-}
-
-function formatOrderSections(items, defaultYear = '2026', defaultMonth = '10', defaultDay = '28') {
-  const cleanedItems = filterOrderItems(items);
-  const rawLines = [];
-  let hasDateLine = false;
-  cleanedItems.forEach(it => {
-    if (it.type === 'line') {
-      let s = it.content.trim();
-      if (s) {
-        if (/^(取貨日期|自取日期|日期)[：:]/.test(s)) {
-          s = standardizeDate(s, defaultYear, defaultMonth, defaultDay);
-          hasDateLine = true;
-        }
-        rawLines.push(s);
-      }
-    }
-  });
-
-  const lines = [];
-  let dateInserted = false;
-  rawLines.forEach(s => {
-    if (!hasDateLine && !dateInserted && /^(取貨時間|自取時間|時間)[：:]/.test(s)) {
-      lines.push(`取貨日期：${defaultYear}-${String(defaultMonth).padStart(2, '0')}-${String(defaultDay).padStart(2, '0')}`);
-      dateInserted = true;
-    }
-    if (/^(取貨時間|自取時間|時間)[：:]/.test(s)) {
-      const parts = s.split(/[：:]/);
-      const prefix = parts[0];
-      const val = parts.slice(1).join(':').trim();
-      lines.push(`${prefix}：${cleanPickupTime(val)}`);
-    } else {
-      lines.push(s);
-    }
-  });
-
-  const topLines = [];
-  const pickupLines = [];
-  const contactLines = [];
-  let prevCat = null;
-
-  lines.forEach(s => {
-    const currCat = categorizeLine(s);
-
-    let renderedLine = '';
-    if (/^(蛋糕口味|口味)[：:]/.test(s)) {
-      renderedLine = `<div class="spec-flavor">${escapeHtml(s)}</div>`;
-    } else if (/^(蛋糕尺寸|尺寸)[：:]/.test(s)) {
-      renderedLine = `<div class="spec-size">${escapeHtml(s)}</div>`;
-    } else if (/加購[：:]\s*(否|無|不用|沒有)/.test(s)) {
-      renderedLine = escapeHtml(s);
-    } else if (s.includes('加購')) {
-      renderedLine = `<mark class="hl-addon">${escapeHtml(s)}</mark>`;
-    } else if (/(加提袋|提袋)[：:]\s*(要|有|O|Ｏ|需)/i.test(s)) {
-      renderedLine = `<mark class="hl-addon">${escapeHtml(s)}</mark>`;
-    } else {
-      renderedLine = escapeHtml(s);
-    }
-
-    if (currCat === 'pickup') {
-      pickupLines.push(renderedLine);
-    } else if (currCat === 'contact') {
-      contactLines.push(renderedLine);
-    } else {
-      // 上半部：客製資訊（顏色/絲帶/題字）與蛋糕尺寸之間空 1 行，口味與加購之間空 1 行
-      if (/^(蛋糕尺寸|尺寸[：:])/.test(s)) {
-        while (topLines.length > 0 && topLines[topLines.length - 1] === '') {
-          topLines.pop();
-        }
-        topLines.push('');
-      } else if (prevCat !== null && currCat !== prevCat) {
-        if (['addon', 'suborder'].includes(currCat)) {
-          topLines.push('');
-        }
-      }
-      topLines.push(renderedLine);
-    }
-
-    prevCat = currCat;
-  });
-
-  return {
-    top: topLines.join('\n').trim(),
-    pickup: pickupLines.join('\n').trim(),
-    contact: contactLines.join('\n').trim()
-  };
-}
-
-function formatOrderLine(rawLine) {
-  const s = rawLine.trim();
-  if (!s) return '';
-  if (isPriceOrTotalLine(s)) return '';
-  if (/加購[：:]\s*(否|無|不用|沒有)/.test(s)) {
-    return escapeHtml(rawLine);
-  }
-  if (s.includes('加購')) {
-    return `<mark class="hl-addon">${escapeHtml(rawLine)}</mark>`;
-  }
-  if (/(加提袋|提袋)[：:]\s*(要|有|O|Ｏ|需)/i.test(s)) {
-    return `<mark class="hl-addon">${escapeHtml(rawLine)}</mark>`;
-  }
-  return escapeHtml(rawLine);
-}
-
-function extractSummary(items) {
-  let name = '';
-  let timeStr = '';
-  let dateStr = '';
-  items.forEach(it => {
-    if (it.type === 'line') {
-      const l = it.content.trim();
-      if (l.includes('姓名：') || l.includes('姓名:')) name = l.split(/：|:/).pop().trim();
-      else if (!name && (l.includes('LINE名稱：') || l.includes('LINE名稱:'))) name = l.split(/：|:/).pop().trim();
-      if (l.includes('取貨時間：') || l.includes('取貨時間:')) timeStr = l.split(/：|:/).pop().trim();
-      if (l.includes('取貨日期：') || l.includes('取貨日期:')) dateStr = l.split(/：|:/).pop().trim();
-    }
-  });
-  const parts = [];
-  if (dateStr || timeStr) parts.push(`⏰ ${dateStr} ${timeStr}`.trim());
-  if (name) parts.push(`👤 ${name}`);
-  return parts.length ? parts.join(' ｜ ') : '訂單資料';
-}
-
-function extractSlipInfo(items) {
-  let lineName = '';
-  let custName = '';
-  let custPhone = '';
-  let pickupTime = '';
-  const addonItems = [];
-
-  items.forEach(it => {
-    if (it.type === 'line') {
-      const s = it.content.trim();
-      if (/(LINE|Line|line)\s*(使用者)?\s*名稱[：:]/i.test(s)) {
-        lineName = s.split(/[：:]/).slice(1).join(':').trim();
-      } else if (/(訂購人|取貨人)?姓名[：:]/.test(s)) {
-        custName = s.split(/[：:]/).slice(1).join(':').trim();
-      } else if (/(訂購人|取貨人)?電話[：:]/.test(s)) {
-        custPhone = s.split(/[：:]/).slice(1).join(':').trim();
-      } else if (/^(取貨時間|自取時間|時間)[：:]/.test(s)) {
-        const rawTime = s.split(/[：:]/).slice(1).join(':').trim();
-        pickupTime = cleanPickupTime(rawTime);
-      } else if (/^(加購|需加購)[：:]/.test(s)) {
-        const val = s.split(/[：:]/).slice(1).join(':').trim();
-        if (!/^(否|無|不用|沒有)$/.test(val)) {
-          addonItems.push(val);
-        }
-      } else if (/^(加提袋|提袋)[：:]\s*(要|有|O|Ｏ|需|\d+)/i.test(s)) {
-        const val = s.split(/[：:]/).slice(1).join(':').trim();
-        addonItems.push(`提袋:${val}`);
-      }
-    }
-  });
-
-  const addonsStr = addonItems.length ? addonItems.join('、') : '無';
-  return {
-    lineName: lineName || '無',
-    custName: custName || '未填',
-    custPhone: custPhone || '未填',
-    pickupTime: pickupTime || '未填',
-    addonItems: addonsStr
-  };
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function processPagesFile(file) {
@@ -1134,13 +787,17 @@ async function processPagesFile(file) {
     const zipImages = {};
     const imgPromises = [];
     zip.forEach((relativePath, zipEntry) => {
-      if (relativePath.startsWith('Data/') && relativePath.endsWith('.png')) {
-        const m = relativePath.match(/-(\d+)\.png$/);
+      if (relativePath.startsWith('Data/')) {
+        const m = relativePath.match(/-(\d+)\.[^.]+$/);
         if (m) {
           const did = parseInt(m[1]);
+          const lower = relativePath.toLowerCase();
+          let mime = 'image/png';
+          if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mime = 'image/jpeg';
+          else if (lower.endsWith('.webp')) mime = 'image/webp';
           imgPromises.push(
             zipEntry.async('base64').then(b64 => {
-              zipImages[did] = `data:image/png;base64,${b64}`;
+              zipImages[did] = `data:${mime};base64,${b64}`;
             })
           );
         }
@@ -1292,7 +949,7 @@ async function processPagesFile(file) {
       if (mYr) docYear = mYr[1];
     }
     renderOrders(orders, docYear, docMonth, docDay);
-    stats.innerText = `🎉 成功解析 ${file.name}！共 ${orders.length} 筆訂單，所有價格加總已清除，加購處已螢光筆標記！`;
+    stats.innerText = `🎉 成功解析 ${file.name}！共 ${orders.length} 筆訂單，所有價格加總已清除，加購處已粉紫色標記！`;
 
   } catch (err) {
     console.error(err);
@@ -1301,129 +958,186 @@ async function processPagesFile(file) {
   }
 }
 
+function renderOrderCardHtml(items, globalIdx, isLeft, docYear, docMonth, docDay) {
+  const cleanedItems = filterOrderItems(items);
+  const sideClass = isLeft ? 'card-left' : 'card-right';
+  const htmlOut = [];
+  let i = 0;
+  let hasDate = false;
+
+  for (let it of cleanedItems) {
+    if (it.type === 'line' && /^(取貨日期|自取日期|日期)[：:]/.test(it.content.trim())) {
+      hasDate = true;
+      break;
+    }
+  }
+
+  while (i < cleanedItems.length) {
+    const it = cleanedItems[i];
+    if (it.type === 'image') {
+      const images = [it];
+      let j = i + 1;
+      while (j < cleanedItems.length && cleanedItems[j].type === 'image') {
+        images.push(cleanedItems[j]);
+        j++;
+      }
+      i = j;
+      const multiCls = images.length > 1 ? 'multi' : '';
+      const imgTags = images.map(imgIt => 
+        `<img src="${imgIt.src}" class="note-img" alt="款式照片" onclick="showLightbox(this.src)" />`
+      ).join('');
+      htmlOut.push(`<div class="img-row ${multiCls}">${imgTags}</div>`);
+      continue;
+    }
+
+    let s = it.content.trim();
+    i++;
+    if (!s) continue;
+
+    // 標題 (1️⃣, 2️⃣, 加單 等)
+    if (/^[1-9]️⃣/.test(s) || /^[①-⑨]/.test(s) || s.startsWith('加單')) {
+      if (i < cleanedItems.length && cleanedItems[i].type === 'line') {
+        const nextS = cleanedItems[i].content.trim();
+        if ((nextS.startsWith('💐') || nextS.includes('花束')) && !nextS.includes('：') && !nextS.includes(':')) {
+          s = `${s} ${nextS}`;
+          i++;
+        }
+      }
+      htmlOut.push('<div class="section-divider"></div>');
+      htmlOut.push(`<div class="note-heading">${escapeHtml(s)}</div>`);
+      continue;
+    }
+
+    // 蛋糕尺寸
+    if (/^(蛋糕尺寸|尺寸)[：:]/.test(s)) {
+      htmlOut.push('<div class="section-divider"></div>');
+      htmlOut.push(`<div class="note-line spec-size">${escapeHtml(s)}</div>`);
+      continue;
+    }
+
+    // 蛋糕口味
+    if (/^(蛋糕口味|口味)[：:]/.test(s)) {
+      htmlOut.push(`<div class="note-line spec-flavor">${escapeHtml(s)}</div>`);
+      continue;
+    }
+
+    // 加購
+    if (/^(加購|需加購)[：:]/.test(s)) {
+      const val = s.split(/[：:]/).slice(1).join(':').trim();
+      if (/^(否|無|不用|沒有)$/.test(val)) {
+        htmlOut.push('<div class="section-divider"></div>');
+        htmlOut.push(`<div class="note-line">${escapeHtml(s)}</div>`);
+      } else {
+        htmlOut.push('<div class="section-divider"></div>');
+        htmlOut.push(`<div class="note-line"><mark class="hl-addon">${escapeHtml(s)}</mark></div>`);
+      }
+      continue;
+    }
+    if (/(加提袋|提袋)[：:]\s*(要|有|O|Ｏ|需)/i.test(s)) {
+      htmlOut.push(`<div class="note-line"><mark class="hl-addon">${escapeHtml(s)}</mark></div>`);
+      continue;
+    }
+
+    // 取貨日期
+    if (/^(取貨日期|自取日期|日期)[：:]/.test(s)) {
+      s = standardizeDate(s, docYear, docMonth, docDay);
+      htmlOut.push('<div class="section-divider"></div>');
+      htmlOut.push(`<div class="note-line">${escapeHtml(s)}</div>`);
+      hasDate = true;
+      continue;
+    }
+
+    // 取貨時間
+    if (/^(取貨時間|自取時間|時間)[：:]/.test(s)) {
+      if (!hasDate) {
+        htmlOut.push('<div class="section-divider"></div>');
+        htmlOut.push(`<div class="note-line">取貨日期：${docYear}-${String(docMonth).padStart(2, '0')}-${String(docDay).padStart(2, '0')}</div>`);
+        hasDate = true;
+      }
+      const parts = s.split(/[：:]/);
+      const prefix = parts[0];
+      const rawVal = parts.slice(1).join(':').trim();
+      const cleanVal = cleanPickupTime(rawVal);
+      let valEscaped = escapeHtml(cleanVal);
+      valEscaped = valEscaped.replace(/(‼️|!+)/g, '<span class="red-mark">$1</span>');
+      htmlOut.push(`<div class="note-line">${prefix}：${valEscaped}</div>`);
+      continue;
+    }
+
+    // 訂購人
+    if (/^(訂購人|取貨人)?.*(LINE|Line|line)[：:]/.test(s)) {
+      htmlOut.push('<div class="section-divider"></div>');
+      htmlOut.push(`<div class="note-line">${escapeHtml(s)}</div>`);
+      continue;
+    }
+
+    htmlOut.push(`<div class="note-line">${escapeHtml(s)}</div>`);
+  }
+
+  const contentInner = htmlOut.join('\n    ');
+  return `
+  <div class="order-card ${sideClass}" id="order-card-${globalIdx}">
+    <span class="order-num-pill">#${globalIdx}</span>
+    <div class="order-flow">
+    ${contentInner}
+    </div>
+  </div>`;
+}
+
+function renderEmptyCardHtml(isLeft) {
+  const sideClass = isLeft ? 'card-left' : 'card-right';
+  return `<div class="order-card empty ${sideClass}"></div>`;
+}
+
 function renderOrders(orders, docYear = '2026', docMonth = '10', docDay = '28') {
   const container = document.getElementById('print-content');
-  const pagesCount = Math.ceil(orders.length / 4);
-
+  const pagesCount = Math.ceil(orders.length / 2);
   let html = '';
   let globalIdx = 1;
 
-  const quadrantClasses = ['cell-top-left', 'cell-top-right', 'cell-bottom-left', 'cell-bottom-right'];
   for (let p = 0; p < pagesCount; p++) {
     html += `<div class="a4-sheet" id="pdf-page-${p+1}">`;
-    const pageOrders = orders.slice(p * 4, (p + 1) * 4);
-
-    for (let c = 0; c < 4; c++) {
-      const quadClass = quadrantClasses[c];
+    const pageOrders = orders.slice(p * 2, (p + 1) * 2);
+    for (let c = 0; c < 2; c++) {
+      const isLeft = (c === 0);
       if (c < pageOrders.length) {
-        const items = pageOrders[c];
-        const parts = formatOrderSections(items, docYear, docMonth, docDay);
-        const images = [];
-
-        items.forEach(it => {
-          if (it.type === 'image') images.push(it.src);
-        });
-
-        let imgClass = '';
-        if (images.length === 2) imgClass = 'multi';
-        else if (images.length >= 3) imgClass = 'triple';
-
-        let imgHtml = '';
-        if (images.length > 0) {
-          imgHtml = `<div class="img-col ${imgClass}">`;
-          images.forEach(src => {
-            imgHtml += `<img src="${src}" class="order-photo" alt="蛋糕照片" onclick="showLightbox(this.src)" />`;
-          });
-          imgHtml += `</div>`;
-        }
-
-        const slip = extractSlipInfo(items);
-        const addonClass = slip.addonItems !== '無' ? 'addon' : '';
-        const prominentLineName = slip.lineName !== '無' ? slip.lineName : slip.custName;
-        const phoneDisplay = escapeHtml(slip.custPhone);
-        const nameDisplay = escapeHtml(slip.custName);
-        const slipHtml = `
-    <div class="memo-slip">
-      <div class="memo-slip-cut-line">
-        <span class="cut-line-icon">✂️</span>
-        <span class="cut-line-text">方便撕下聯</span>
-        <span class="cut-line-dashed"></span>
-      </div>
-      <div class="memo-slip-box">
-        <div class="memo-name-col">
-          <span class="memo-name-text">${escapeHtml(prominentLineName)}</span>
-        </div>
-        <div class="memo-info-col">
-          <div class="memo-slip-row">
-            <span class="memo-item"><span class="memo-slip-label">姓名：</span><span class="memo-slip-val">${nameDisplay}</span></span>
-            <span class="memo-item"><span class="memo-slip-label">電話：</span><span class="memo-slip-val">${phoneDisplay}</span></span>
-          </div>
-          <div class="memo-slip-row">
-            <span class="memo-item"><span class="memo-slip-label">時間：</span><span class="memo-slip-val">${escapeHtml(slip.pickupTime)}</span></span>
-            <span class="memo-item flex-1"><span class="memo-slip-label">加購：</span><span class="memo-slip-val ${addonClass}">${escapeHtml(slip.addonItems)}</span></span>
-          </div>
-        </div>
-      </div>
-    </div>`;
-
-        html += `
-  <div class="order-cell ${quadClass}" id="order-cell-${globalIdx}">
-    <span class="order-num-pill">#${globalIdx}</span>
-    <div class="order-top-area">
-      <div class="order-specs-col">${parts.top}</div>
-      {IMG_PLACEHOLDER}
-    </div>
-    <div class="order-bottom-area">
-      <div class="bottom-pickup-col">${parts.pickup}</div>
-      <div class="bottom-contact-col">${parts.contact}</div>
-    </div>
-    ${slipHtml}
-  </div>`.replace('{IMG_PLACEHOLDER}', imgHtml);
+        html += renderOrderCardHtml(pageOrders[c], globalIdx, isLeft, docYear, docMonth, docDay);
         globalIdx++;
       } else {
-        html += `<div class="order-cell empty ${quadClass}"></div>`;
+        html += renderEmptyCardHtml(isLeft);
       }
     }
     html += `</div>`;
   }
-
   container.innerHTML = html;
-  autoFitText();
+  autoFitOrderCards();
 }
 
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+function autoFitOrderCards() {
+  const cards = document.querySelectorAll('.order-card:not(.empty)');
+  cards.forEach(card => {
+    const flow = card.querySelector('.order-flow');
+    if (!flow) return;
 
-function autoFitText() {
-  const cells = document.querySelectorAll('.order-cell:not(.empty)');
-  cells.forEach(cell => {
-    const specsCol = cell.querySelector('.order-specs-col');
-    const topArea = cell.querySelector('.order-top-area');
-    if (specsCol && topArea) {
-      let fontSize = 11.0;
-      specsCol.style.fontSize = fontSize + 'pt';
-      specsCol.style.lineHeight = '1.38';
+    let fontSize = 11.0;
+    flow.style.fontSize = fontSize + 'pt';
 
-      let attempts = 0;
-      while (specsCol.scrollHeight > topArea.clientHeight && fontSize > 8.0 && attempts < 20) {
-        fontSize -= 0.25;
-        specsCol.style.fontSize = fontSize + 'pt';
-        attempts++;
-      }
-    }
-
-    // 自動微調便條紙資訊欄字體大小，確保內容（加購、電話等）完整顯示
-    const infoCol = cell.querySelector('.memo-info-col');
-    if (infoCol) {
-      const rows = infoCol.querySelectorAll('.memo-slip-row');
-      rows.forEach(row => {
-        let fs = 7.2;
-        while (row.scrollWidth > infoCol.clientWidth + 0.5 && fs > 5.0) {
-          fs -= 0.15;
-          row.style.fontSize = fs.toFixed(2) + 'pt';
+    let attempts = 0;
+    while (flow.scrollHeight > card.clientHeight - 18 && attempts < 25) {
+      const imgs = flow.querySelectorAll('.note-img');
+      let reducedImg = false;
+      imgs.forEach(img => {
+        let currH = parseInt(img.style.maxHeight || window.getComputedStyle(img).maxHeight) || 240;
+        if (currH > 150) {
+          img.style.maxHeight = (currH - 15) + 'px';
+          reducedImg = true;
         }
       });
+      if (fontSize > 8.5) {
+        fontSize -= 0.2;
+        flow.style.fontSize = fontSize + 'pt';
+      }
+      attempts++;
     }
   });
 }
@@ -1441,19 +1155,19 @@ function downloadPDF() {
 
   const opt = {
     margin:       0,
-    filename:     '當天蛋糕訂單_A4四模列印.pdf',
+    filename:     '當天蛋糕訂單_A4橫向兩模列印.pdf',
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { scale: 2, useCORS: true, logging: false },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
   };
 
   html2pdf().set(opt).from(element).save().then(() => {
-    btn.innerText = '📥 下載 A4 4模 PDF';
+    btn.innerText = '📥 下載 A4 橫向兩模 PDF';
     btn.disabled = false;
   }).catch(err => {
     console.error(err);
     alert('產生 PDF 發生問題，建議您改用「🖨️ 瀏覽器列印」按鈕並選擇「另存為 PDF」！');
-    btn.innerText = '📥 下載 A4 4模 PDF';
+    btn.innerText = '📥 下載 A4 橫向兩模 PDF';
     btn.disabled = false;
   });
 }
@@ -1466,7 +1180,7 @@ function clearAll() {
 
 function printClean() {
   const origTitle = document.title;
-  document.title = ""; // 清空 title，確保部分瀏覽器不會印出頁首標題
+  document.title = ''; // 清空 title，確保部分瀏覽器不會印出頁首標題
   window.print();
   setTimeout(() => {
     document.title = origTitle;
@@ -1484,8 +1198,8 @@ function loadSampleData() {
         let contentHtml = '';
         sheets.forEach(s => contentHtml += s.outerHTML);
         document.getElementById('print-content').innerHTML = contentHtml;
-        document.getElementById('stats-info').innerText = '✅ 已成功載入今日 11 筆訂單範例（所有價格加總已清除，加購處已螢光筆標記）！';
-        autoFitText();
+        document.getElementById('stats-info').innerText = '✅ 已成功載入今日訂單範例（A4 兩模備忘錄排版，價格加總已清除，加購處已粉紫色標記）！';
+        autoFitOrderCards();
       }
     })
     .catch(() => {
@@ -1496,6 +1210,7 @@ function loadSampleData() {
 window.addEventListener('load', () => {
   loadSampleData();
 });
+window.addEventListener('resize', autoFitOrderCards);
 </script>
 </body>
 </html>
