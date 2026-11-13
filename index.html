@@ -261,6 +261,60 @@
     background: #fafafa;
   }
 
+  /* 針對長訂單或多圖訂單的自動密度分級 */
+  .order-card.medium {
+    font-size: 10.5pt;
+    line-height: 1.38;
+  }
+  .order-card.medium .order-flow {
+    font-size: 10.5pt;
+    line-height: 1.38;
+  }
+  .order-card.medium .note-img {
+    max-height: 145px;
+  }
+  .order-card.medium .img-row {
+    margin: 4px 0 6px 0;
+    gap: 8px;
+  }
+  .order-card.medium .img-row.multi .note-img {
+    max-height: 125px;
+  }
+  .order-card.medium .note-line {
+    margin: 1.2px 0;
+  }
+  .order-card.medium .section-divider {
+    height: 5px;
+  }
+
+  .order-card.dense {
+    font-size: 9.8pt;
+    line-height: 1.34;
+  }
+  .order-card.dense .order-flow {
+    font-size: 9.8pt;
+    line-height: 1.34;
+  }
+  .order-card.dense .note-img {
+    max-height: 95px;
+  }
+  .order-card.dense .img-row {
+    margin: 3px 0 4px 0;
+    gap: 6px;
+  }
+  .order-card.dense .img-row.multi .note-img {
+    max-height: 90px;
+  }
+  .order-card.dense .note-line {
+    margin: 1px 0;
+  }
+  .order-card.dense .section-divider {
+    height: 4px;
+  }
+  .order-card.dense .note-heading {
+    margin: 1px 0;
+  }
+
   /* 訂單編號標籤 */
   .order-num-pill {
     position: absolute;
@@ -313,7 +367,7 @@
     white-space: pre-wrap;
   }
   .note-heading {
-    font-size: 11.5pt;
+    font-size: 1.05em;
     font-weight: 600;
     color: #111827;
     margin: 2px 0;
@@ -324,12 +378,12 @@
 
   /* 尺寸與口味文字 */
   .spec-flavor {
-    font-size: 11.5pt;
+    font-size: 1.05em;
     font-weight: 600;
     color: #111827;
   }
   .spec-size {
-    font-size: 11.5pt;
+    font-size: 1.05em;
     font-weight: 500;
     color: #111827;
   }
@@ -961,6 +1015,18 @@ async function processPagesFile(file) {
 function renderOrderCardHtml(items, globalIdx, isLeft, docYear, docMonth, docDay) {
   const cleanedItems = filterOrderItems(items);
   const sideClass = isLeft ? 'card-left' : 'card-right';
+
+  // 計算圖片數與文字行數以決定自適應密度樣式
+  const imgCount = cleanedItems.filter(it => it.type === 'image').length;
+  const lineCount = cleanedItems.filter(it => it.type === 'line' && it.content.trim()).length;
+
+  let densityClass = '';
+  if ((imgCount >= 2 && lineCount >= 14) || (imgCount >= 1 && lineCount >= 20) || lineCount >= 22) {
+    densityClass = 'dense';
+  } else if (imgCount >= 2 || lineCount >= 15) {
+    densityClass = 'medium';
+  }
+
   const htmlOut = [];
   let i = 0;
   let hasDate = false;
@@ -1075,8 +1141,9 @@ function renderOrderCardHtml(items, globalIdx, isLeft, docYear, docMonth, docDay
   }
 
   const contentInner = htmlOut.join('\n    ');
+  const cardClasses = `order-card ${sideClass} ${densityClass}`.trim();
   return `
-  <div class="order-card ${sideClass}" id="order-card-${globalIdx}">
+  <div class="${cardClasses}" id="order-card-${globalIdx}">
     <span class="order-num-pill">#${globalIdx}</span>
     <div class="order-flow">
     ${contentInner}
@@ -1125,34 +1192,37 @@ function autoFitOrderCards() {
     const flow = card.querySelector('.order-flow');
     if (!flow) return;
 
-    // 先重置為基準預設樣式
-    let fontSize = 11.0;
+    // 依據卡片密度預設初始參數
+    const isDense = card.classList.contains('dense');
+    const isMedium = card.classList.contains('medium');
+
+    let fontSize = isDense ? 9.8 : (isMedium ? 10.5 : 11.0);
     flow.style.fontSize = fontSize + 'pt';
-    flow.style.lineHeight = '1.42';
+    flow.style.lineHeight = isDense ? '1.34' : (isMedium ? '1.38' : '1.42');
 
     const imgs = Array.from(flow.querySelectorAll('.note-img'));
     const isMulti = imgs.length > 1;
-    let currentImgH = isMulti ? 165 : 225;
+    let currentImgH = isDense ? (isMulti ? 90 : 95) : (isMedium ? (isMulti ? 125 : 145) : (isMulti ? 165 : 225));
     imgs.forEach(img => {
       img.style.maxHeight = currentImgH + 'px';
     });
 
     const dividers = Array.from(flow.querySelectorAll('.section-divider'));
-    dividers.forEach(d => d.style.height = '6px');
+    dividers.forEach(d => d.style.height = isDense ? '4px' : (isMedium ? '5px' : '6px'));
 
     const lines = Array.from(flow.querySelectorAll('.note-line'));
-    lines.forEach(l => l.style.margin = '1.5px 0');
+    lines.forEach(l => l.style.margin = isDense ? '1px 0' : (isMedium ? '1.2px 0' : '1.5px 0'));
 
-    // 計算卡片內部可用內容高度（扣除 padding 及 8px 安全距離）
+    // 計算卡片內部可用內容高度（扣除 padding 及 6px 安全距離）
     const cardStyle = window.getComputedStyle(card);
     const padTop = parseFloat(cardStyle.paddingTop) || 23;
     const padBottom = parseFloat(cardStyle.paddingBottom) || 19;
-    const maxAllowedHeight = card.clientHeight - padTop - padBottom - 8;
+    const maxAllowedHeight = card.clientHeight - padTop - padBottom - 6;
 
-    // 【步驟 1：優先縮小圖片】訂單太長時，優先逐步縮小圖片高度釋放垂直空間
+    // 【步驟 1：優先縮小圖片】若內容溢出，逐步縮小圖片高度釋放空間
     let attempts = 0;
-    while (flow.scrollHeight > maxAllowedHeight && currentImgH > 65 && attempts < 35) {
-      currentImgH -= 8;
+    while (flow.scrollHeight > maxAllowedHeight && currentImgH > 45 && attempts < 40) {
+      currentImgH -= 6;
       imgs.forEach(img => {
         img.style.maxHeight = currentImgH + 'px';
       });
@@ -1161,26 +1231,26 @@ function autoFitOrderCards() {
 
     // 【步驟 2：微調字體】若圖片已縮小仍略長，平滑微調文字大小
     attempts = 0;
-    while (flow.scrollHeight > maxAllowedHeight && fontSize > 8.5 && attempts < 25) {
+    while (flow.scrollHeight > maxAllowedHeight && fontSize > 8.0 && attempts < 30) {
       fontSize -= 0.2;
       flow.style.fontSize = fontSize + 'pt';
       attempts++;
     }
 
-    // 【步驟 3：極長訂單保底壓縮】若有20行以上極長文字，緊湊行距與分界線，確保100%絕不溢出A5
+    // 【步驟 3：極長訂單保底壓縮】緊湊行距與分界線，確保100%絕不溢出A5
     if (flow.scrollHeight > maxAllowedHeight) {
-      flow.style.lineHeight = '1.26';
+      flow.style.lineHeight = '1.24';
       dividers.forEach(d => d.style.height = '2px');
-      lines.forEach(l => l.style.margin = '1px 0');
+      lines.forEach(l => l.style.margin = '0.5px 0');
 
-      while (flow.scrollHeight > maxAllowedHeight && currentImgH > 45) {
-        currentImgH -= 5;
+      while (flow.scrollHeight > maxAllowedHeight && currentImgH > 35) {
+        currentImgH -= 4;
         imgs.forEach(img => {
           img.style.maxHeight = currentImgH + 'px';
         });
       }
 
-      while (flow.scrollHeight > maxAllowedHeight && fontSize > 7.5) {
+      while (flow.scrollHeight > maxAllowedHeight && fontSize > 7.0) {
         fontSize -= 0.2;
         flow.style.fontSize = fontSize + 'pt';
       }
