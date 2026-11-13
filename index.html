@@ -241,7 +241,7 @@
     max-width: 148.5mm;
     max-height: 210mm;
     box-sizing: border-box;
-    padding: 7mm 10mm 6mm 10mm;
+    padding: 6mm 9mm 5mm 9mm;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -249,7 +249,7 @@
     overflow: hidden;
     background: #ffffff;
     font-size: 11pt;
-    line-height: 1.45;
+    line-height: 1.42;
   }
   .order-card.card-left {
     border-right: 1.2px dashed #9ca3af;
@@ -410,7 +410,7 @@
       max-width: 148.5mm !important;
       max-height: 210mm !important;
       box-sizing: border-box !important;
-      padding: 7mm 10mm 6mm 10mm !important;
+      padding: 6mm 9mm 5mm 9mm !important;
       display: flex !important;
       flex-direction: column !important;
       justify-content: flex-start !important;
@@ -984,7 +984,7 @@ function renderOrderCardHtml(items, globalIdx, isLeft, docYear, docMonth, docDay
       i = j;
       const multiCls = images.length > 1 ? 'multi' : '';
       const imgTags = images.map(imgIt => 
-        `<img src="${imgIt.src}" class="note-img" alt="款式照片" onclick="showLightbox(this.src)" />`
+        `<img src="${imgIt.src}" class="note-img" alt="款式照片" onclick="showLightbox(this.src)" onload="scheduleAutoFit()" />`
       ).join('');
       htmlOut.push(`<div class="img-row ${multiCls}">${imgTags}</div>`);
       continue;
@@ -1113,36 +1113,83 @@ function renderOrders(orders, docYear = '2026', docMonth = '10', docDay = '28') 
   autoFitOrderCards();
 }
 
+let autoFitTimer = null;
+function scheduleAutoFit() {
+  if (autoFitTimer) clearTimeout(autoFitTimer);
+  autoFitTimer = setTimeout(autoFitOrderCards, 30);
+}
+
 function autoFitOrderCards() {
   const cards = document.querySelectorAll('.order-card:not(.empty)');
   cards.forEach(card => {
     const flow = card.querySelector('.order-flow');
     if (!flow) return;
 
+    // 先重置為基準預設樣式
     let fontSize = 11.0;
     flow.style.fontSize = fontSize + 'pt';
+    flow.style.lineHeight = '1.42';
 
+    const imgs = Array.from(flow.querySelectorAll('.note-img'));
+    const isMulti = imgs.length > 1;
+    let currentImgH = isMulti ? 165 : 225;
+    imgs.forEach(img => {
+      img.style.maxHeight = currentImgH + 'px';
+    });
+
+    const dividers = Array.from(flow.querySelectorAll('.section-divider'));
+    dividers.forEach(d => d.style.height = '6px');
+
+    const lines = Array.from(flow.querySelectorAll('.note-line'));
+    lines.forEach(l => l.style.margin = '1.5px 0');
+
+    // 計算卡片內部可用內容高度（扣除 padding 及 8px 安全距離）
+    const cardStyle = window.getComputedStyle(card);
+    const padTop = parseFloat(cardStyle.paddingTop) || 23;
+    const padBottom = parseFloat(cardStyle.paddingBottom) || 19;
+    const maxAllowedHeight = card.clientHeight - padTop - padBottom - 8;
+
+    // 【步驟 1：優先縮小圖片】訂單太長時，優先逐步縮小圖片高度釋放垂直空間
     let attempts = 0;
-    while (flow.scrollHeight > card.clientHeight - 18 && attempts < 25) {
-      const imgs = flow.querySelectorAll('.note-img');
-      let reducedImg = false;
+    while (flow.scrollHeight > maxAllowedHeight && currentImgH > 65 && attempts < 35) {
+      currentImgH -= 8;
       imgs.forEach(img => {
-        let currH = parseInt(img.style.maxHeight || window.getComputedStyle(img).maxHeight) || 240;
-        if (currH > 150) {
-          img.style.maxHeight = (currH - 15) + 'px';
-          reducedImg = true;
-        }
+        img.style.maxHeight = currentImgH + 'px';
       });
-      if (fontSize > 8.5) {
+      attempts++;
+    }
+
+    // 【步驟 2：微調字體】若圖片已縮小仍略長，平滑微調文字大小
+    attempts = 0;
+    while (flow.scrollHeight > maxAllowedHeight && fontSize > 8.5 && attempts < 25) {
+      fontSize -= 0.2;
+      flow.style.fontSize = fontSize + 'pt';
+      attempts++;
+    }
+
+    // 【步驟 3：極長訂單保底壓縮】若有20行以上極長文字，緊湊行距與分界線，確保100%絕不溢出A5
+    if (flow.scrollHeight > maxAllowedHeight) {
+      flow.style.lineHeight = '1.26';
+      dividers.forEach(d => d.style.height = '2px');
+      lines.forEach(l => l.style.margin = '1px 0');
+
+      while (flow.scrollHeight > maxAllowedHeight && currentImgH > 45) {
+        currentImgH -= 5;
+        imgs.forEach(img => {
+          img.style.maxHeight = currentImgH + 'px';
+        });
+      }
+
+      while (flow.scrollHeight > maxAllowedHeight && fontSize > 7.5) {
         fontSize -= 0.2;
         flow.style.fontSize = fontSize + 'pt';
       }
-      attempts++;
     }
   });
 }
 
 function downloadPDF() {
+  autoFitOrderCards();
   const element = document.getElementById('print-content');
   if (!element || element.children.length === 0) {
     alert('請先拖入 Pages 檔案或載入訂單！');
@@ -1179,12 +1226,15 @@ function clearAll() {
 }
 
 function printClean() {
+  autoFitOrderCards();
   const origTitle = document.title;
   document.title = ''; // 清空 title，確保部分瀏覽器不會印出頁首標題
-  window.print();
   setTimeout(() => {
-    document.title = origTitle;
-  }, 1000);
+    window.print();
+    setTimeout(() => {
+      document.title = origTitle;
+    }, 1000);
+  }, 100);
 }
 
 function loadSampleData() {
@@ -1200,6 +1250,7 @@ function loadSampleData() {
         document.getElementById('print-content').innerHTML = contentHtml;
         document.getElementById('stats-info').innerText = '✅ 已成功載入今日訂單範例（A4 兩模備忘錄排版，價格加總已清除，加購處已粉紫色標記）！';
         autoFitOrderCards();
+        setTimeout(autoFitOrderCards, 150);
       }
     })
     .catch(() => {
@@ -1209,8 +1260,10 @@ function loadSampleData() {
 
 window.addEventListener('load', () => {
   loadSampleData();
+  setTimeout(autoFitOrderCards, 150);
 });
-window.addEventListener('resize', autoFitOrderCards);
+window.addEventListener('resize', scheduleAutoFit);
+window.addEventListener('beforeprint', autoFitOrderCards);
 </script>
 </body>
 </html>
